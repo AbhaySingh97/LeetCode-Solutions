@@ -2,57 +2,63 @@
 class Solution {
     static constexpr int MOD = 1000000007;
 
-    vector<int> sum, sq, lazy;
+    vector<int> s, q, lz;
     int n;
 
-    void apply(int v, int l, int r, long long x) {
+    inline void add(int v, int l, int r) {
         long long len = r - l + 1;
-
-        sq[v] = (sq[v] + 2LL * x * sum[v] % MOD
-                 + x * x % MOD * len) % MOD;
-
-        sum[v] = (sum[v] + x * len) % MOD;
-        lazy[v] = (lazy[v] + x) % MOD;
+        q[v] = (q[v] + 2LL * s[v] + len) % MOD;
+        s[v] = (s[v] + len) % MOD;
+        lz[v]++;
     }
 
-    void push(int v, int l, int r) {
-        if (lazy[v] == 0 || l == r) return;
+    inline void push(int v, int l, int r) {
+        if (!lz[v] || l == r) return;
 
-        int m = (l + r) / 2;
-        int x = lazy[v];
+        int m = (l + r) >> 1;
+        int t = lz[v];
 
-        apply(v * 2, l, m, x);
-        apply(v * 2 + 1, m + 1, r, x);
+        long long len1 = m - l + 1;
+        long long len2 = r - m;
 
-        lazy[v] = 0;
+        q[v << 1] = (q[v << 1] + 2LL * t * s[v << 1]
+                     + 1LL * t * t % MOD * len1) % MOD;
+        s[v << 1] = (s[v << 1] + 1LL * t * len1) % MOD;
+        lz[v << 1] += t;
+
+        q[v << 1 | 1] = (q[v << 1 | 1]
+                     + 2LL * t * s[v << 1 | 1]
+                     + 1LL * t * t % MOD * len2) % MOD;
+        s[v << 1 | 1] = (s[v << 1 | 1]
+                     + 1LL * t * len2) % MOD;
+        lz[v << 1 | 1] += t;
+
+        lz[v] = 0;
     }
 
-    void update(int v, int l, int r, int ql, int qr) {
-        if (ql <= l && r <= qr) {
-            apply(v, l, r, 1);
+    void update(int v, int l, int r, int a, int b) {
+        if (a <= l && r <= b) {
+            add(v, l, r);
             return;
         }
 
         push(v, l, r);
-        int m = (l + r) / 2;
+        int m = (l + r) >> 1;
 
-        if (ql <= m)
-            update(v * 2, l, m, ql, qr);
+        if (a <= m) update(v << 1, l, m, a, b);
+        if (b > m) update(v << 1 | 1, m + 1, r, a, b);
 
-        if (qr > m)
-            update(v * 2 + 1, m + 1, r, ql, qr);
-
-        sum[v] = (sum[v * 2] + sum[v * 2 + 1]) % MOD;
-        sq[v] = (sq[v * 2] + sq[v * 2 + 1]) % MOD;
+        s[v] = (s[v << 1] + s[v << 1 | 1]) % MOD;
+        q[v] = (q[v << 1] + q[v << 1 | 1]) % MOD;
     }
 
 public:
     int sumCounts(vector<int>& nums) {
         n = nums.size();
 
-        sum.assign(4 * n + 5, 0);
-        sq.assign(4 * n + 5, 0);
-        lazy.assign(4 * n + 5, 0);
+        s.assign(4 * n, 0);
+        q.assign(4 * n, 0);
+        lz.assign(4 * n, 0);
 
         vector<int> last(100001, -1);
         long long ans = 0;
@@ -63,7 +69,8 @@ public:
             update(1, 0, n - 1, left, i);
 
             last[nums[i]] = i;
-            ans = (ans + sq[1]) % MOD;
+            ans += q[1];
+            if (ans >= MOD) ans -= MOD;
         }
 
         return ans;
